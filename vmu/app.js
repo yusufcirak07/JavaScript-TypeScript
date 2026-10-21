@@ -6,9 +6,11 @@
 
 const TEACHER_PASSWORD = "vm2627";
 const DEFAULT_ROOM_PIN = "2627";
+const QUESTION_DURATION_SECONDS = 90; // 1.5 dakika (90 saniye)
 
 const STORAGE_KEYS = {
-  ROOM_STATE: "ts_kahoot_arena_room_state_v1",
+  ROOM_STATE: "ts_kahoot_arena_room_state_90s_v2",
+  LEGACY_ROOM_STATE: "ts_kahoot_arena_room_state_v1",
   THEME: "mining_workshop_theme_v5",
   HOST_UNLOCKED: "ts_kahoot_host_unlocked_v1",
   PLAYER_SESSION: "ts_kahoot_player_session_v1"
@@ -28,8 +30,8 @@ const appState = {
     phase: "LOBBY", // "LOBBY" | "QUESTION_ACTIVE" | "QUESTION_REVEAL" | "FINAL_PODIUM"
     currentQuestionIndex: 0,
     questionStartTime: null,
-    questionDuration: 90,
-    remainingSeconds: 90,
+    questionDuration: QUESTION_DURATION_SECONDS,
+    remainingSeconds: QUESTION_DURATION_SECONDS,
     players: {}, // { playerId: { id, name, status: 'pending'|'approved'|'rejected', score: 0, correctCount: 0, wrongCount: 0, joinedAt, answers: { [qId]: { option, timeMs, isCorrect, points } } } }
     updatedAt: Date.now()
   },
@@ -123,7 +125,7 @@ function toggleTheme() {
 // YEREL DEPOLAMA & OTURUM YÖNETİMİ
 // ==========================================================================
 function loadInitialState() {
-  // Oda durumunu yükle
+  // Oda durumunu yükle (90s_v2 anahtarı veya eski v1'den oyuncuları taşı)
   try {
     const savedRoom = localStorage.getItem(STORAGE_KEYS.ROOM_STATE);
     if (savedRoom) {
@@ -131,15 +133,25 @@ function loadInitialState() {
       if (parsed && parsed.players) {
         appState.room = {
           ...appState.room,
-          ...parsed
+          ...parsed,
+          questionDuration: Math.max(QUESTION_DURATION_SECONDS, Number(parsed.questionDuration) || QUESTION_DURATION_SECONDS)
         };
-        if (!appState.room.questionDuration || appState.room.questionDuration < 90) {
-          appState.room.questionDuration = 90;
-          if (appState.room.phase === "LOBBY") {
-            appState.room.remainingSeconds = 90;
-          }
+      }
+    } else {
+      const legacyRoom = localStorage.getItem(STORAGE_KEYS.LEGACY_ROOM_STATE);
+      if (legacyRoom) {
+        const parsedLegacy = JSON.parse(legacyRoom);
+        if (parsedLegacy && parsedLegacy.players) {
+          appState.room = {
+            ...appState.room,
+            ...parsedLegacy,
+            questionDuration: QUESTION_DURATION_SECONDS,
+            remainingSeconds: QUESTION_DURATION_SECONDS,
+            questionStartTime: Date.now()
+          };
         }
       }
+      saveRoomStateToStorage();
     }
   } catch (e) {
     console.warn("Oda durumu yüklenemedi:", e);
@@ -204,7 +216,7 @@ function saveLocalPlayerSession() {
 function initRealtimeNetwork() {
   // 1. BroadcastChannel (Aynı bilgisayar / tarayıcıdaki sekmeler arası anlık iletişim)
   if ("BroadcastChannel" in window) {
-    appState.bc = new BroadcastChannel("ts_kahoot_arena_channel_v1");
+    appState.bc = new BroadcastChannel("ts_kahoot_arena_channel_90s_v2");
     appState.bc.onmessage = (event) => {
       if (event && event.data) {
         handleIncomingNetworkMessage(event.data);
@@ -218,6 +230,9 @@ function initRealtimeNetwork() {
       try {
         const updatedRoom = JSON.parse(event.newValue);
         if (updatedRoom) {
+          if (!updatedRoom.questionDuration || updatedRoom.questionDuration < QUESTION_DURATION_SECONDS) {
+            updatedRoom.questionDuration = QUESTION_DURATION_SECONDS;
+          }
           appState.room = updatedRoom;
           renderAll();
         }
@@ -418,6 +433,9 @@ function handleIncomingNetworkMessage(msg, sourceConn = null) {
 
   if (msg.type === "ROOM_SYNC" && msg.room) {
     appState.room = msg.room;
+    if (!appState.room.questionDuration || appState.room.questionDuration < 90) {
+      appState.room.questionDuration = 90;
+    }
     renderAll();
     return;
   }
@@ -486,7 +504,7 @@ function handleIncomingNetworkMessage(msg, sourceConn = null) {
 
     const now = Date.now();
     const elapsedSec = Math.max(0, (now - (appState.room.questionStartTime || now)) / 1000);
-    const totalSec = appState.room.questionDuration || currentQ.timeLimit || 90;
+    const totalSec = Math.max(90, appState.room.questionDuration || 90);
     const remainingRatio = Math.max(0, Math.min(1, (totalSec - elapsedSec) / totalSec));
 
     const isCorrect = optionId === currentQ.correctOption;
@@ -573,8 +591,8 @@ function startQuestionByIndex(index) {
 
   appState.room.currentQuestionIndex = index;
   appState.room.phase = "QUESTION_ACTIVE";
-  appState.room.questionDuration = q.timeLimit || 90;
-  appState.room.remainingSeconds = q.timeLimit || 90;
+  appState.room.questionDuration = 90;
+  appState.room.remainingSeconds = 90;
   appState.room.questionStartTime = Date.now();
 
   // Eğer bu soru yeniden başlatılıyorsa bu soruya ait eski cevapları temizle ve puanları yeniden hesapla
@@ -766,6 +784,9 @@ function switchViewMode(targetMode) {
     }
     appState.viewMode = "host";
     setupHostPeer();
+    if (appState.room.phase === "QUESTION_ACTIVE") {
+      startHostCountdownTimer();
+    }
   } else {
     appState.viewMode = "player";
     setupPlayerPeer();
