@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>TypeScript Quiz Arena — Canlı Kod Yarışması & Puan Tablosu</title>
+  <meta name="description" content="Gerçek zamanlı katılımcı onaylı TypeScript hata ayıklama yarışması ve canlı puan sıralaması platformu.">
+  <meta name="theme-color" content="#090d16">
+
+  <!-- Google Fonts: Inter, Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- PeerJS (Farklı Cihazlardan Gerçek Zamanlı Bağlantı İçin) -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" defer></script>
+
+  <link rel="stylesheet" href="styles.css?v=4.0">
+</head>
+<body class="theme-dark">
+
+  <!-- ÜST NAVİGASYON BAR (Mobilde Sabit Kalmaz, İçeriği Kısıtlamaz) -->
+  <header class="app-header" id="mainHeader" style="position: relative !important; top: auto !important;">
+    <div class="header-container">
+      <div class="brand-area">
+        <div class="brand-badge-clean">
+          <span class="brand-dot" id="connectionDot"></span>
+          <span id="connectionStatusLabel">TS LIVE ARENA</span>
+        </div>
+        <div class="brand-titles">
+          <h1 class="main-title">TypeScript Tip Avcısı: Canlı Quiz</h1>
+          <p class="sub-title">Katılımcı Onaylı Gerçek Zamanlı Kod Yarışması & Puan Sıralaması</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <!-- Ekran Modu Seçici: Katılımcı Ekranı vs Tahta (Host) Ekranı -->
+        <div class="mode-switcher-group" role="group" aria-label="Ekran Modu Seçimi">
+          <button type="button" class="btn btn-sm mode-switch-btn active" id="btnSwitchPlayerView">
+            <svg class="ui-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Katılımcı Ekranı</span>
+          </button>
+          <button type="button" class="btn btn-sm mode-switch-btn" id="btnSwitchHostView">
+            <svg class="ui-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <span>Tahta / Yönetici Ekranı</span>
+            <span class="pending-Alert-pill" id="headerPendingBadge" style="display:none;">0</span>
+          </button>
+        </div>
+
+        <!-- Tema Değiştirici (Açık / Koyu Tema) -->
+        <button type="button" class="btn btn-control-outline btn-sm theme-toggle-btn" id="btnToggleTheme" title="Açık / Koyu Tema Değiştir">
+          <span class="btn-icon" id="themeIcon">
+            <svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </span>
+          <span id="themeText">Açık Tema</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ANA İÇERİK KONTEYNERİ -->
+  <main class="main-layout">
+
+    <!-- ======================================================================
+         EKRAN 1: KATILIMCI (ÖĞRENCİ / YARIŞMACI) EKRANI
+         ====================================================================== -->
+    <div id="playerScreenContainer" class="screen-view active-screen">
+
+      <!-- AŞAMA 1.1: İSİM YAZARAK KATILMA FORMU -->
+      <section class="section-card cyber-card player-card-narrow" id="playerJoinCard">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <span class="section-step-num cyber-step">KATILIMCI GİRİŞİ</span>
+            <h2 class="section-title">Yarışmaya Katıl</h2>
+          </div>
+        </div>
+
+        <p class="card-intro-text">
+          Yarışmaya katılmak için adınızı yazıp <strong>Katılma İsteği Gönder</strong> butonuna basın. Yönetici (Hoca) onayladıktan sonra sorular ekranınızda açılacaktır.
+        </p>
+
+        <form id="playerJoinForm" class="join-form" autocomplete="off">
+          <div class="form-group">
+            <label for="playerNameInput" class="form-label">Adınız Soyadınız veya Grup Adınız:</label>
+            <input
+              type="text"
+              id="playerNameInput"
+              class="form-input cyber-input input-lg"
+              placeholder="Örn: Ahmet Yılmaz"
+              maxlength="32"
+              required
+            >
+          </div>
+
+          <div class="form-group room-pin-group">
+            <div class="label-row">
+              <label for="playerRoomPinInput" class="form-label">Oda Kodu (Tahtadaki Kod):</label>
+              <span class="pin-hint" id="pinAutoHint">Otomatik eşleşir</span>
+            </div>
+            <input
+              type="text"
+              id="playerRoomPinInput"
+              class="form-input cyber-input font-mono-input"
+              placeholder="Varsayılan: Otomatik Sınıf Odası"
+              maxlength="12"
+            >
+          </div>
+
+          <button type="submit" class="btn btn-primary-clean btn-lg btn-block" id="btnSubmitJoinRequest">
+            <svg class="ui-icon" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <span>Katılma İsteği Gönder</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- AŞAMA 1.2: YÖNETİCİ ONAYI BEKLEME EKRANI -->
+      <section class="section-card cyber-card player-card-narrow status-center-card" id="playerWaitingApprovalCard" style="display:none;">
+        <div class="waiting-spinner-wrap">
+          <div class="pulse-ring"></div>
+          <svg class="ui-icon ui-icon-xl spinner-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <span class="section-step-num cyber-step">ONAY BEKLENİYOR</span>
+        <h2 class="status-big-title" id="waitingPlayerNameTitle">Merhaba!</h2>
+        <p class="status-desc-text">
+          Katılma isteğiniz tahtaya iletildi. <strong>Yöneticinin (Hocanın) onayı bekleniyor...</strong> Onaylandığınız anda sorular otomatik olarak ekranınıza gelecektir.
+        </p>
+        <div class="player-connection-meta">
+          <span class="meta-pill" id="playerSyncMethodBadge">Canlı Senkronizasyon Aktif</span>
+        </div>
+        <button type="button" class="btn btn-outline-subtle btn-sm" id="btnCancelJoinRequest">
+          <svg class="ui-icon ui-icon-xs" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <span>İsmi Değiştir / İptal Et</span>
+        </button>
+      </section>
+
+      <!-- AŞAMA 1.3: REDDEDİLDİ EKRANI -->
+      <section class="section-card cyber-card player-card-narrow status-center-card" id="playerRejectedCard" style="display:none;">
+        <div class="status-icon-box danger-box">
+          <svg class="ui-icon ui-icon-xl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <span class="section-step-num cyber-step">İSTEK REDDEDİLDİ</span>
+        <h2 class="status-big-title">Katılım İsteğiniz Onaylanmadı</h2>
+        <p class="status-desc-text">Yönetici katılım isteğinizi reddetti veya oturumdan çıkardı. Geçerli bir isimle tekrar katılma isteği gönderebilirsiniz.</p>
+        <button type="button" class="btn btn-primary-clean" id="btnRetryJoin">Tekrar Dene</button>
+      </section>
+
+      <!-- AŞAMA 1.4: ONAYLANDI & YARIŞMA LOBİ BEKLEME EKRANI -->
+      <section class="section-card cyber-card player-card-narrow status-center-card" id="playerApprovedLobbyCard" style="display:none;">
+        <div class="status-icon-box success-box">
+          <svg class="ui-icon ui-icon-xl" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <span class="section-step-num cyber-step">ONAYLANDI • HAZIR</span>
+        <h2 class="status-big-title" id="approvedPlayerTitle">Hoş Geldin!</h2>
+        <p class="status-desc-text">
+          Katılımınız onaylandı! Tahtada soru başlatıldığında şıklar anında ekranınızda açılacaktır. Gözünüz tahtada ve ekranınızda olsun!
+        </p>
+        <div class="player-mini-stats">
+          <div class="mini-stat-item">
+            <span class="mini-stat-label">Puanınız</span>
+            <strong class="mini-stat-val" id="lobbyPlayerScore">0</strong>
+          </div>
+          <div class="mini-stat-item">
+            <span class="mini-stat-label">Sıralamanız</span>
+            <strong class="mini-stat-val" id="lobbyPlayerRank">#-</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- AŞAMA 1.5: AKTİF SORU VE CEVAPLAMA EKRANI (KATILIMCI) -->
+      <section class="section-card cyber-card player-Active-question-card" id="playerQuestionCard" style="display:none;">
+        <!-- Katılımcı Üst Durum Çubuğu -->
+        <div class="player-hud-bar">
+          <div class="player-hud-left">
+            <span class="section-step-num cyber-step" id="playerQNumBadge">SORU 1 / 10</span>
+            <span class="diff-badge" id="playerQDiffBadge">Kolay</span>
+          </div>
+          <div class="player-hud-center">
+            <div class="timer-pill" id="playerTimerPill">
+              <svg class="ui-icon ui-icon-xs" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span id="playerTimerText">30 sn</span>
+            </div>
+          </div>
+          <div class="player-hud-right">
+            <span class="player-score-pill" id="playerHudScoreBadge">0 Puan • #-</span>
+          </div>
+        </div>
+
+        <!-- Süre İlerleme Çubuğu -->
+        <div class="timer-progress-track">
+          <div class="timer-progress-bar" id="playerTimerBar" style="width: 100%;"></div>
+        </div>
+
+        <!-- Soru Başlığı ve Hatalı TypeScript Kodu -->
+        <div class="question-content-box">
+          <h3 class="question-main-heading" id="playerQTitle">Soru Başlığı</h3>
+          <p class="question-sub-prompt" id="playerQPrompt">Aşağıdaki fonksiyondaki tip hatasını düzeltin.</p>
+
+          <div class="code-window">
+            <div class="code-window-header">
+              <div class="code-dots">
+                <span class="c-dot dot-red"></span>
+                <span class="c-dot dot-amber"></span>
+                <span class="c-dot dot-green"></span>
+              </div>
+              <span class="code-filename">problem.ts</span>
+              <span class="code-lang-tag">TypeScript</span>
+            </div>
+            <pre class="code-pre"><code id="playerBuggyCode"></code></pre>
+          </div>
+
+          <div class="requirement-callout">
+            <svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <div>
+              <strong>İstenen:</strong> <span id="playerQRequirement"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Şıklı Kahoot Cevap Butonları Grid -->
+        <div class="kahoot-options-grid" id="playerOptionsGrid">
+          <!-- JS ile A, B, C, D şık butonları basılacak -->
+        </div>
+
+        <!-- Katılımcı Cevap Gönderdiğinde Kilitli Bekleme Durumu -->
+        <div class="answer-locked-banner" id="playerAnswerLockedBanner" style="display:none;">
+          <div class="locked-check-icon">
+            <svg class="ui-icon ui-icon-lg" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="locked-check-text">
+            <strong id="playerLockedChoiceTitle">Cevabınız Alındı!</strong>
+            <span>Diğer katılımcıların tamamlaması ve sonuçların açıklanması bekleniyor...</span>
+          </div>
+        </div>
+
+        <!-- Soru Sonucu Açıklandığında Katılımcı Geri Bildirim Kartı -->
+        <div class="player-reveal-box" id="playerRevealBox" style="display:none;">
+          <div class="reveal-status-banner" id="playerRevealBanner">
+            <span class="reveal-icon" id="playerRevealIcon"></span>
+            <div class="reveal-title-group">
+              <h4 id="playerRevealHeading">DOĞRU CEVAP!</h4>
+              <span id="playerRevealPoints">+920 Puan Kazandınız</span>
+            </div>
+          </div>
+          <div class="reveal-explanation-card">
+            <div class="reveal-correct-label">
+              <strong>Doğru Şık:</strong> <span id="playerRevealCorrectOpt" class="badge-correct-opt">A</span>
+            </div>
+            <p class="reveal-exp-text" id="playerRevealExplanation"></p>
+            <div class="code-window code-window-compact">
+              <div class="code-window-header">
+                <span class="code-filename">cozum.ts (Doğru Kod)</span>
+              </div>
+              <pre class="code-pre"><code id="playerRevealFixedCode"></code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AŞAMA 1.6: YARIŞMA SONU KATILIMCI KARNESİ -->
+      <section class="section-card cyber-card player-card-narrow status-center-card" id="playerFinalCard" style="display:none;">
+        <div class="status-icon-box trophy-box">
+          <svg class="ui-icon ui-icon-xl" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        </div>
+        <span class="section-step-num cyber-step">YARIŞMA TAMAMLANDI</span>
+        <h2 class="status-big-title" id="playerFinalRankTitle">Tebrikler!</h2>
+        <div class="player-final-stats-grid">
+          <div class="final-stat-box">
+            <span class="f-label">Genel Sıralama</span>
+            <strong class="f-val" id="playerFinalRankVal">#1</strong>
+          </div>
+          <div class="final-stat-box">
+            <span class="f-label">Toplam Puan</span>
+            <strong class="f-val" id="playerFinalScoreVal">0</strong>
+          </div>
+          <div class="final-stat-box">
+            <span class="f-label">Doğru Cevap</span>
+            <strong class="f-val" id="playerFinalCorrectVal">0 / 10</strong>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ======================================================================
+         EKRAN 2: TAHTA / YÖNETİCİ (HOST) EKRANI (PROJEKSİYON GÖRÜNÜMÜ)
+         ====================================================================== -->
+    <div id="hostScreenContainer" class="screen-view" style="display:none;">
+
+      <!-- ÜST KONTROL VE ODA BİLGİ BARI (TAHTA ÜST ŞERİDİ) -->
+      <section class="section-card cyber-card host-top-bar-card">
+        <div class="host-top-bar">
+          <div class="host-room-info">
+            <div class="room-pin-display" title="Katılımcılar sadece isim yazarak veya bu kodla bağlanabilir">
+              <span class="pin-label">ODA KODU:</span>
+              <strong class="pin-number" id="hostRoomPinDisplay">------</strong>
+              <button type="button" class="btn btn-xs btn-control-outline" id="btnCopyJoinLink" title="Katılım bağlantısını kopyala">
+                <svg class="ui-icon ui-icon-xs" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Linki Kopyala</span>
+              </button>
+            </div>
+            <button type="button" class="btn btn-xs btn-outline-subtle" id="btnOpenTestPlayerTab" title="Yeni sekmede katılımcı ekranı aç">
+              <svg class="ui-icon ui-icon-xs" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <span>+ Yeni Sekmede Katılımcı Aç</span>
+            </button>
+          </div>
+
+          <!-- 10 Soruluk Hızlı Gezinti Barı -->
+          <div class="question-pills-nav" id="hostQuestionNavPills" aria-label="Sorular Arası Hızlı Geçiş">
+            <!-- JS ile 1..10 soru butonları basılacak -->
+          </div>
+
+          <div class="host-top-actions">
+            <button type="button" class="btn btn-xs btn-outline-subtle" id="btnShowPodiumView" title="Final Podyum ve Genel Sıralamayı Göster">
+              <svg class="ui-icon ui-icon-xs" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+              <span>Podyum & Sıralama</span>
+            </button>
+            <button type="button" class="btn btn-xs btn-danger-soft" id="btnResetQuizRoom" title="Tüm puanları veya yarışmayı sıfırla">
+              <svg class="ui-icon ui-icon-xs" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              <span>Yarışmayı Sıfırla</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAHTA ANA İKİ SÜTUNLU YERLEŞİM: SOLDA SORULAR & ÇÖZÜM, SAĞDA KATILIMCILAR & PUAN SIRALAMASI -->
+      <div class="host-board-grid">
+
+        <!-- SOL / ANA SAHNE: SORU SUNUMU, LOBİ VEYA FİNAL PODYUMU -->
+        <div class="host-main-stage">
+
+          <!-- SAHNE A: LOBİ & BAŞLATMA EKRANI -->
+          <section class="section-card cyber-card host-stage-card" id="hostStageLobby">
+            <div class="section-header">
+              <div class="section-title-wrap">
+                <span class="section-step-num cyber-step">TAHTA EKRANI • LOBİ</span>
+                <h2 class="section-title">Katılımcı Kabulü ve Yarışma Başlatma</h2>
+              </div>
+              <span class="stage-status-tag">10 TypeScript Sorusu Hazır</span>
+            </div>
+
+            <div class="lobby-hero-banner">
+              <div class="lobby-hero-left">
+                <h3 class="lobby-hero-title">Katılımcılar İsimlerini Yazarak Katılabilir!</h3>
+                <p class="lobby-hero-desc">
+                  Öğrenciler kendi ekranlarından isimlerini yazıp gönderdiğinde sağdaki <strong>"Onay Bekleyen Katılımcılar"</strong> listesine düşer. Onayladığınız katılımcılar yarışmaya dahil olur.
+                </p>
+                <div class="lobby-action-buttons">
+                  <button type="button" class="btn btn-primary-clean btn-lg" id="btnStartQuizMain">
+                    <svg class="ui-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <span>Yarışmayı Başlat (Soru 1'e Geç)</span>
+                  </button>
+                  <button type="button" class="btn btn-control-outline" id="btnApproveAllLobby">
+                    <svg class="ui-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Bekleyen Tümünü Onayla</span>
+                  </button>
+                </div>
+              </div>
+              <div class="lobby-hero-stats">
+                <div class="hero-stat-card">
+                  <span class="h-stat-num" id="lobbyApprovedCount">0</span>
+                  <span class="h-stat-label">Onaylı Yarışmacı</span>
+                </div>
+                <div class="hero-stat-card pending-stat-card">
+                  <span class="h-stat-num" id="lobbyPendingCount">0</span>
+                  <span class="h-stat-label">Onay Bekleyen</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 10 Sorunun Önizleme Listesi -->
+            <div class="lobby-questions-preview">
+              <div class="preview-header-row">
+                <h4 class="preview-heading">Yarışma Soruları (10 TypeScript Görevi)</h4>
+                <span class="preview-sub">Dilediğiniz soruya doğrudan tıklayarak da başlatabilirsiniz</span>
+              </div>
+              <div class="questions-preview-grid" id="hostQuestionsPreviewGrid">
+                <!-- JS ile 10 soru kartı basılacak -->
+              </div>
+            </div>
+          </section>
+
+          <!-- SAHNE B: CANLI SORU & ÇÖZÜM EKRANI (TAHTA) -->
+          <section class="section-card cyber-card host-stage-card" id="hostStageQuestion" style="display:none;">
+            <!-- Soru Üst Kontrol Barı -->
+            <div class="host-question-topbar">
+              <div class="hq-badges">
+                <span class="section-step-num cyber-step" id="hostQNumberBadge">SORU 01 / 10</span>
+                <span class="diff-badge" id="hostQDifficultyBadge">Kolay</span>
+              </div>
+
+              <!-- Canlı Sayaç ve Cevaplayan Sayısı -->
+              <div class="hq-metrics">
+                <div class="hq-metric-pill timer-metric" id="hostTimerBox">
+                  <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <strong id="hostTimerSeconds">30</strong>
+                  <span>sn</span>
+                </div>
+                <div class="hq-metric-pill answers-metric">
+                  <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+                  <strong id="hostAnswerCountText">0 / 0</strong>
+                  <span>Cevapladı</span>
+                </div>
+              </div>
+
+              <!-- Hoca Soru Aksiyon Butonları -->
+              <div class="hq-controls">
+                <button type="button" class="btn btn-xs btn-control-outline" id="btnAddTime15" title="Süreye +15 saniye ekle">
+                  +15 sn
+                </button>
+                <button type="button" class="btn btn-sm btn-warning-solid" id="btnRevealAnswer">
+                  <svg class="ui-icon ui-icon-xs" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <span id="btnRevealAnswerText">Süreyi Bitir & Doğru Cevabı Göster</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-primary-clean" id="btnNextQuestion">
+                  <span id="btnNextQuestionText">Sonraki Soru</span>
+                  <svg class="ui-icon ui-icon-xs" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Süre Çubuğu -->
+            <div class="timer-progress-track host-timer-track">
+              <div class="timer-progress-bar" id="hostTimerBar" style="width: 100%;"></div>
+            </div>
+
+            <!-- Soru Başlığı, Hatalı Kod ve İstenen -->
+            <div class="host-question-body">
+              <div class="hq-title-row">
+                <h2 class="host-question-title" id="hostQTitle">Soru 1 — Yanlış dönüş tipi</h2>
+                <p class="host-question-prompt" id="hostQPrompt">Aşağıdaki fonksiyondaki tip hatasını düzeltin.</p>
+              </div>
+
+              <div class="code-window host-code-window">
+                <div class="code-window-header">
+                  <div class="code-dots">
+                    <span class="c-dot dot-red"></span>
+                    <span class="c-dot dot-amber"></span>
+                    <span class="c-dot dot-green"></span>
+                  </div>
+                  <span class="code-filename">hatali_kod.ts</span>
+                  <span class="code-lang-tag">TypeScript Bug</span>
+                </div>
+                <pre class="code-pre host-code-pre"><code id="hostBuggyCode"></code></pre>
+              </div>
+
+              <div class="requirement-callout host-requirement-box">
+                <svg class="ui-icon ui-icon-md" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <div>
+                  <strong>İstenen:</strong> <span id="hostQRequirement"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4 Şık (A, B, C, D) Tahta Görünümü & Oy Dağılımı -->
+            <div class="kahoot-options-grid host-options-grid" id="hostOptionsGrid">
+              <!-- JS ile 4 şık kartı ve oy istatistikleri basılacak -->
+            </div>
+
+            <!-- Soru Sonucu Açıldığında Tahtada Görünecek Çözüm & Açıklama Paneli -->
+            <div class="host-solution-panel" id="hostSolutionPanel" style="display:none;">
+              <div class="solution-panel-header">
+                <div class="sol-badge-wrap">
+                  <span class="sol-check-badge">
+                    <svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>DOĞRU ÇÖZÜM: ŞIK <strong id="hostSolCorrectOption">A</strong></span>
+                  </span>
+                </div>
+              </div>
+              <p class="solution-explanation-text" id="hostSolExplanation"></p>
+              <div class="code-window">
+                <div class="code-window-header">
+                  <span class="code-filename">duzeltilmis_kod.ts (Çözüm)</span>
+                  <span class="code-lang-tag">Derleme Başarılı ✓</span>
+                </div>
+                <pre class="code-pre"><code id="hostSolFixedCode"></code></pre>
+              </div>
+            </div>
+          </section>
+
+          <!-- SAHNE C: FİNAL PODYUMU VE GENEL SONUÇLAR EKRANI -->
+          <section class="section-card cyber-card host-stage-card" id="hostStagePodium" style="display:none;">
+            <div class="section-header">
+              <div class="section-title-wrap">
+                <span class="section-step-num cyber-step">FİNAL TABLOSU</span>
+                <h2 class="section-title">Şampiyonluk Podyumu & Genel Puan Sıralaması</h2>
+              </div>
+              <div class="section-actions">
+                <button type="button" class="btn btn-sm btn-control-outline" id="btnExportResultsCsv">
+                  <svg class="ui-icon ui-icon-xs" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Sonuçları İndir (CSV)</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-subtle" id="btnBackToLobbyFromPodium">
+                  <span>Lobiye Dön</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- İlk 3 Kürsüsü (Podyum) -->
+            <div class="podium-showcase" id="hostPodiumShowcase">
+              <!-- JS ile 2., 1., 3. podyum sütunları basılacak -->
+            </div>
+
+            <!-- Tüm Katılımcıların Detaylı Puan Tablosu -->
+            <div class="data-table-scrollable">
+              <table class="data-table cyber-table" id="finalLeaderboardTable">
+                <thead>
+                  <tr>
+                    <th style="width: 70px;">Sıra</th>
+                    <th>Katılımcı Adı</th>
+                    <th>Toplam Puan</th>
+                    <th>Doğru</th>
+                    <th>Yanlış</th>
+                    <th>Başarı Oranı</th>
+                  </tr>
+                </thead>
+                <tbody id="finalLeaderboardTableBody">
+                  <!-- JS ile doldurulacak -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- SAĞ PANEL: HER AN GÖRÜNÜR KATILIMCI ONAY KUTUSU & CANLI PUAN SIRALAMASI -->
+        <aside class="host-sidebar-panel">
+
+          <!-- KUTU 1: ONAY BEKLEYEN KATILIMCILAR -->
+          <section class="section-card cyber-card sidebar-card pending-approvals-card" id="hostPendingCard">
+            <div class="sidebar-card-header">
+              <div class="sidebar-title-group">
+                <span class="pulse-indicator" id="pendingPulseDot"></span>
+                <h3 class="sidebar-title">Onay Bekleyenler</h3>
+                <span class="count-pill warning-pill" id="sidebarPendingCount">0</span>
+              </div>
+              <button type="button" class="btn btn-xs btn-primary-clean" id="btnApproveAllSidebar" style="display:none;">
+                Tümünü Onayla
+              </button>
+            </div>
+            <div class="pending-list-container" id="hostPendingList">
+              <div class="empty-sidebar-state">
+                <span>Henüz onay bekleyen katılımcı yok.</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- KUTU 2: CANLI PUAN SIRALAMASI (LEADERBOARD) VE KATILIMCILAR -->
+          <section class="section-card cyber-card sidebar-card leaderboard-sidebar-card">
+            <div class="sidebar-card-header">
+              <div class="sidebar-title-group">
+                <svg class="ui-icon ui-icon-sm accent-icon" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                <h3 class="sidebar-title">Canlı Puan Sıralaması</h3>
+                <span class="count-pill emerald-pill" id="sidebarApprovedCount">0</span>
+              </div>
+            </div>
+
+            <div class="leaderboard-list-container" id="hostLiveLeaderboard">
+              <div class="empty-sidebar-state">
+                <span>Onaylanan katılımcılar ve puan sıralamaları burada canlı listelenir.</span>
+              </div>
+            </div>
+          </section>
+
+        </aside>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: YÖNETİCİ / HOCA EKRANI ŞİFRE DOĞRULAMA (Şifre gizli, ipucu yok) -->
+  <div class="modal-overlay" id="hostPasswordModal" style="display:none;">
+    <div class="modal-card cyber-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <svg class="ui-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>Tahta / Yönetici Ekranı Girişi</span>
+        </h3>
+        <button type="button" class="modal-close-btn" id="btnCloseHostModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-text">
+          Tahtaya yansıtılan sunucu (Host) ekranını açmak, katılımcıları onaylamak ve soruları yönetmek için yönetici şifrenizi giriniz.
+        </p>
+        <div class="password-input-group">
+          <label for="hostPasswordInput" class="form-label">Yönetici Şifresi:</label>
+          <input type="password" id="hostPasswordInput" class="form-input cyber-input" placeholder="Şifrenizi giriniz" autocomplete="off">
+        </div>
+        <div class="modal-error-msg" id="hostModalError" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-subtle" id="btnCancelHostModal">İptal</button>
+        <button type="button" class="btn btn-primary-clean" id="btnSubmitHostPassword">Tahta Ekranını Aç</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BİLDİRİM (TOAST) BİLEŞENİ -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- UYGULAMA SCRİPTLERİ -->
+  <script src="data.js?v=4.0"></script>
+  <script src="app.js?v=4.0"></script>
+</body>
+</html>
