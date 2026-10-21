@@ -28,8 +28,8 @@ const appState = {
     phase: "LOBBY", // "LOBBY" | "QUESTION_ACTIVE" | "QUESTION_REVEAL" | "FINAL_PODIUM"
     currentQuestionIndex: 0,
     questionStartTime: null,
-    questionDuration: 30,
-    remainingSeconds: 30,
+    questionDuration: 90,
+    remainingSeconds: 90,
     players: {}, // { playerId: { id, name, status: 'pending'|'approved'|'rejected', score: 0, correctCount: 0, wrongCount: 0, joinedAt, answers: { [qId]: { option, timeMs, isCorrect, points } } } }
     updatedAt: Date.now()
   },
@@ -133,6 +133,12 @@ function loadInitialState() {
           ...appState.room,
           ...parsed
         };
+        if (!appState.room.questionDuration || appState.room.questionDuration < 90) {
+          appState.room.questionDuration = 90;
+          if (appState.room.phase === "LOBBY") {
+            appState.room.remainingSeconds = 90;
+          }
+        }
       }
     }
   } catch (e) {
@@ -480,7 +486,7 @@ function handleIncomingNetworkMessage(msg, sourceConn = null) {
 
     const now = Date.now();
     const elapsedSec = Math.max(0, (now - (appState.room.questionStartTime || now)) / 1000);
-    const totalSec = appState.room.questionDuration || currentQ.timeLimit || 30;
+    const totalSec = appState.room.questionDuration || currentQ.timeLimit || 90;
     const remainingRatio = Math.max(0, Math.min(1, (totalSec - elapsedSec) / totalSec));
 
     const isCorrect = optionId === currentQ.correctOption;
@@ -567,8 +573,8 @@ function startQuestionByIndex(index) {
 
   appState.room.currentQuestionIndex = index;
   appState.room.phase = "QUESTION_ACTIVE";
-  appState.room.questionDuration = q.timeLimit || 35;
-  appState.room.remainingSeconds = q.timeLimit || 35;
+  appState.room.questionDuration = q.timeLimit || 90;
+  appState.room.remainingSeconds = q.timeLimit || 90;
   appState.room.questionStartTime = Date.now();
 
   // Eğer bu soru yeniden başlatılıyorsa bu soruya ait eski cevapları temizle ve puanları yeniden hesapla
@@ -923,7 +929,7 @@ function renderPlayerScreen() {
   document.getElementById("playerTimerText").textContent = isReveal ? "Süre Bitti" : `${appState.room.remainingSeconds} sn`;
   document.getElementById("playerHudScoreBadge").textContent = `${me.score} Puan • ${myRankText}`;
 
-  const pct = isReveal ? 0 : Math.max(0, Math.min(100, (appState.room.remainingSeconds / (appState.room.questionDuration || 30)) * 100));
+  const pct = isReveal ? 0 : Math.max(0, Math.min(100, (appState.room.remainingSeconds / (appState.room.questionDuration || 90)) * 100));
   const timerBar = document.getElementById("playerTimerBar");
   timerBar.style.width = `${pct}%`;
   timerBar.classList.toggle("timer-low", appState.room.remainingSeconds <= 8);
@@ -1172,7 +1178,7 @@ function renderHostQuestionStage() {
   document.getElementById("hostTimerSeconds").textContent = isReveal ? "0" : appState.room.remainingSeconds;
   document.getElementById("hostAnswerCountText").textContent = `${answeredCount} / ${approvedPlayers.length}`;
 
-  const pct = isReveal ? 0 : Math.max(0, Math.min(100, (appState.room.remainingSeconds / (appState.room.questionDuration || 30)) * 100));
+  const pct = isReveal ? 0 : Math.max(0, Math.min(100, (appState.room.remainingSeconds / (appState.room.questionDuration || 90)) * 100));
   const timerBar = document.getElementById("hostTimerBar");
   timerBar.style.width = `${pct}%`;
   timerBar.classList.toggle("timer-low", appState.room.remainingSeconds <= 8);

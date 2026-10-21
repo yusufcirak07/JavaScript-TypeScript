@@ -9,7 +9,7 @@ const QUIZ_CONFIG = {
   teacherPassword: "vm2627",
   basePoints: 1000,
   speedBonusMax: 500,
-  defaultTimeSeconds: 35
+  defaultTimeSeconds: 90
 };
 
 const QUESTIONS = [
@@ -19,7 +19,7 @@ const QUESTIONS = [
     title: "Soru 1 — Yanlış dönüş tipi",
     difficulty: "Kolay",
     difficultyClass: "diff-easy",
-    timeLimit: 30,
+    timeLimit: 90,
     prompt: "Aşağıdaki fonksiyondaki tip hatasını düzeltin.",
     buggyCode: `function countWords(text: string): number {
   return text.split(" ").length.toString();
@@ -59,7 +59,7 @@ const QUESTIONS = [
     title: "Soru 2 — Geçersiz duygu türü",
     difficulty: "Kolay",
     difficultyClass: "diff-easy",
-    timeLimit: 30,
+    timeLimit: 90,
     prompt: "Aşağıdaki fonksiyondaki dönüş tipi uyuşmazlığını düzeltin.",
     buggyCode: `type Sentiment = "positive" | "negative" | "neutral";
 
@@ -111,7 +111,7 @@ function detectSentiment(text: string): Sentiment {
     title: "Soru 3 — Yanlış nesne alanı tipi",
     difficulty: "Kolay",
     difficultyClass: "diff-easy",
-    timeLimit: 30,
+    timeLimit: 90,
     prompt: "Aşağıdaki nesneyi arayüz (interface) tanımına uygun hâle getirin.",
     buggyCode: `interface AnalysisResult {
   summary: string;
@@ -167,7 +167,7 @@ const result: AnalysisResult = {
     title: "Soru 4 — Yanlış dizi tipi",
     difficulty: "Kolay",
     difficultyClass: "diff-easy",
-    timeLimit: 30,
+    timeLimit: 90,
     prompt: "Aşağıdaki fonksiyonun dönüş değerindeki tip uyuşmazlığını giderin.",
     buggyCode: `function extractKeywords(text: string): string[] {
   const words: string[] = text.split(" ");
@@ -211,7 +211,7 @@ const result: AnalysisResult = {
     title: "Soru 5 — Olmayan özellik erişimi",
     difficulty: "Kolay–orta",
     difficultyClass: "diff-easy-med",
-    timeLimit: 35,
+    timeLimit: 90,
     prompt: "Aşağıdaki fonksiyonda arayüzde bulunmayan özellik erişimini düzeltin.",
     buggyCode: `interface AIResponse {
   answer: string;
@@ -263,7 +263,7 @@ function displayResponse(response: AIResponse): void {
     title: "Soru 6 — Null kontrolü",
     difficulty: "Orta",
     difficultyClass: "diff-medium",
-    timeLimit: 35,
+    timeLimit: 90,
     prompt: "Olası null değerine karşı güvenli tip daraltma (narrowing) uygulayın.",
     buggyCode: `function createSummary(text: string | null): string {
   return text.substring(0, 30);
@@ -306,7 +306,7 @@ function displayResponse(response: AIResponse): void {
     title: "Soru 7 — Yanlış fonksiyon parametresi",
     difficulty: "Orta",
     difficultyClass: "diff-medium",
-    timeLimit: 35,
+    timeLimit: 90,
     prompt: "Fonksiyon çağrısını tanımlanan Message arayüzüne uygun şekilde düzeltin.",
     buggyCode: `interface Message {
   content: string;
@@ -363,7 +363,7 @@ sendMessage({
     title: "Soru 8 — Eksik nesne alanı",
     difficulty: "Orta",
     difficultyClass: "diff-medium",
-    timeLimit: 35,
+    timeLimit: 90,
     prompt: "ChatMessage arayüzüne göre nesnedeki eksik alanı uygun tiple tamamlayın.",
     buggyCode: `interface ChatMessage {
   id: number;
@@ -422,7 +422,7 @@ const message: ChatMessage = {
     title: "Soru 9 — Promise dönüş tipi",
     difficulty: "Orta–zor",
     difficultyClass: "diff-med-hard",
-    timeLimit: 40,
+    timeLimit: 90,
     prompt: "Asenkron fonksiyonun Promise dönüş tipini sözleşmeye uygun hâle getirin.",
     buggyCode: `async function getAIResponse(prompt: string): Promise<string> {
   const response = await Promise.resolve({
@@ -472,7 +472,7 @@ const message: ChatMessage = {
     title: "Soru 10 — Birden fazla tip hatası",
     difficulty: "Final",
     difficultyClass: "diff-final",
-    timeLimit: 45,
+    timeLimit: 90,
     prompt: "Aşağıdaki kodda birden fazla tip hatası bulunmaktadır. Tümünü düzeltin.",
     buggyCode: `type Sentiment = "positive" | "negative" | "neutral";
 
